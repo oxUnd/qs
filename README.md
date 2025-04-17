@@ -38,6 +38,8 @@ Glob patterns support:
 - `?` - Matches any single character
 - `[abc]` - Matches any character in the brackets
 
+If a target with the same name already exists, the new source files will be appended to that target. This allows you to add more source files to an existing target without manually editing the CMakeLists.txt file.
+
 ### Build project
 
 ```
@@ -109,4 +111,4 @@ qs init
 # Create several source files...
 qs add myapp *.cpp *.c
 qs std
-``` 
+```

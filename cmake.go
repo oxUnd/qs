@@ -137,7 +137,63 @@ func addTarget(targetName string, sourceFiles []string) {
 		expandedSourceFiles[i] = strings.Replace(file, "\\", "/", -1)
 	}
 
-	// Create the target addition text
+	// Check if target already exists
+	targetPattern := fmt.Sprintf(`add_executable\(%s[\s\n]`, regexp.QuoteMeta(targetName))
+	targetExists, _ := regexp.MatchString(targetPattern, cmakeContent)
+
+	if targetExists {
+		// Find the existing target block and append new source files to it
+		re := regexp.MustCompile(fmt.Sprintf(`(add_executable\(%s\n)([^)]+)(\))`, regexp.QuoteMeta(targetName)))
+		matches := re.FindStringSubmatch(cmakeContent)
+
+		if len(matches) >= 3 {
+			// Extract existing source files
+			existingSourcesBlock := matches[2]
+			existingSources := strings.Split(existingSourcesBlock, "\n")
+
+			// Clean up the existing sources (remove whitespace)
+			cleanedSources := []string{}
+			for _, src := range existingSources {
+				trimmed := strings.TrimSpace(src)
+				if trimmed != "" {
+					cleanedSources = append(cleanedSources, trimmed)
+				}
+			}
+
+			// Append new sources, avoiding duplicates
+			for _, newFile := range expandedSourceFiles {
+				found := false
+				for _, existingFile := range cleanedSources {
+					if existingFile == newFile {
+						found = true
+						break
+					}
+				}
+				if !found {
+					cleanedSources = append(cleanedSources, newFile)
+				}
+			}
+
+			// Create the updated source block
+			newSourcesBlock := "    " + strings.Join(cleanedSources, "\n    ")
+
+			// Replace the old target block with the new one
+			replacement := fmt.Sprintf("${1}%s${3}", newSourcesBlock)
+			cmakeContent = re.ReplaceAllString(cmakeContent, replacement)
+
+			err = os.WriteFile("CMakeLists.txt", []byte(cmakeContent), 0644)
+			if err != nil {
+				fmt.Printf("Error updating CMakeLists.txt: %v\n", err)
+				return
+			}
+
+			fmt.Printf("Updated existing target '%s' with %d additional source files\n",
+				targetName, len(expandedSourceFiles))
+			return
+		}
+	}
+
+	// Create the target addition text (for new targets)
 	targetAddition := fmt.Sprintf("\nadd_executable(%s\n    %s\n)\n",
 		targetName,
 		strings.Join(expandedSourceFiles, "\n    "))
