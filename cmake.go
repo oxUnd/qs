@@ -81,7 +81,7 @@ func addTarget(targetName string, sourceFiles []string) {
 			// Assume it's a single source file with same name as target
 			mainFile := targetName + ".cpp"
 			if !fileExists(mainFile) {
-				mainFile = targetName + ".c"
+				mainFile = targetName + ".cc"
 				if !fileExists(mainFile) {
 					fmt.Printf("No source file found for target '%s'\n", targetName)
 					return
