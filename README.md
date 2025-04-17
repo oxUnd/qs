@@ -44,11 +44,15 @@ Glob patterns support:
 qs build
 ```
 
+Creates a build directory, runs cmake and make to build your project.
+
 ### Run project
 
 ```
-qs run
+qs run [target]
 ```
+
+Runs the specified executable target (or the default target if not specified).
 
 ### Add standard CMake configuration
 
@@ -61,12 +65,20 @@ This adds common CMake configuration to your project:
 - Organized output directories (bin, lib)
 - Standard include directories
 - Testing support
+- Install targets
 
 You can optionally specify the C++ standard:
 - `qs std 11` - Sets C++11 standard
 - `qs std 14` - Sets C++14 standard (default)
 - `qs std 17` - Sets C++17 standard
 - `qs std 20` - Sets C++20 standard
+
+### Other commands
+
+```
+qs version      - Display version information
+qs help         - Show help message
+```
 
 ## Examples
 
@@ -82,10 +94,8 @@ int main() {
     return 0;
 }' > hello.cpp
 qs add hello
-qs std 17  # Use C++17 standard
-mkdir build && cd build
-cmake ..
-make
+qs build
+qs run
 ```
 
 The executable will be in the `build/bin` directory.
