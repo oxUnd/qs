@@ -27,7 +27,7 @@ qs add <target_name> [files...]
 ```
 
 Examples:
-- `qs add hello` - Adds target "hello" with hello.cpp or hello.c (if found)
+- `qs add hello` - Adds target "hello" with hello.cpp, hello.cc, hello.c, or hello.cxx (if found)
 - `qs add hello hello.cpp utils.cpp` - Adds target with explicit source files
 - `qs add hello src` - Adds all source files from the "src" directory
 - `qs add hello *.cpp` - Adds all .cpp files in the current directory

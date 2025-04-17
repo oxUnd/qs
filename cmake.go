@@ -79,14 +79,23 @@ func addTarget(targetName string, sourceFiles []string) {
 			}
 		} else {
 			// Assume it's a single source file with same name as target
-			mainFile := targetName + ".cpp"
-			if !fileExists(mainFile) {
-				mainFile = targetName + ".cc"
-				if !fileExists(mainFile) {
-					fmt.Printf("No source file found for target '%s'\n", targetName)
-					return
+			// Try all common C/C++ file extensions
+			extensions := []string{".cpp", ".cc", ".c", ".cxx"}
+			mainFile := ""
+
+			for _, ext := range extensions {
+				candidateFile := targetName + ext
+				if fileExists(candidateFile) {
+					mainFile = candidateFile
+					break
 				}
 			}
+
+			if mainFile == "" {
+				fmt.Printf("No source file found for target '%s' (tried .cpp, .cc, .c, .cxx extensions)\n", targetName)
+				return
+			}
+
 			expandedSourceFiles = []string{mainFile}
 		}
 	} else {
@@ -312,7 +321,7 @@ func fileExists(filename string) bool {
 
 func isSourceFile(filename string) bool {
 	ext := filepath.Ext(filename)
-	return ext == ".cpp" || ext == ".c" || ext == ".cc" || ext == ".cxx" || ext == ".h" || ext == ".hpp"
+	return ext == ".cpp" || ext == ".c" || ext == ".cc" || ext == ".cxx" || ext == ".h" || ext == ".hpp" || ext == ".hxx"
 }
 
 func containsGlobChar(pattern string) bool {
