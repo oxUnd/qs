@@ -10,8 +10,13 @@ import (
 
 // initProject creates a basic CMakeLists.txt file for a new project
 func initProject() {
-	projectName := filepath.Base(getCurrentDir())
+	// if CMakeLists.txt exists, return
+	if fileExists("CMakeLists.txt") {
+		fmt.Println("Error: CMakeLists.txt already exists. Run 'qs add' to add targets.")
+		return
+	}
 
+	projectName := getProjectName()
 	content := fmt.Sprintf(`cmake_minimum_required(VERSION 3.10)
 project(%s)
 
@@ -40,10 +45,12 @@ enable_testing()
 	}
 
 	fmt.Printf("Initialized CMake project '%s'\n", projectName)
+	newFirstProject()
+	addTarget(getProjectName(), []string{"src/main.cc"})
 }
 
-// getTargetName returns the target name for the project
-func getTargetName() string {
+// getProjectName returns the project name for the project
+func getProjectName() string {
 	projectName := filepath.Base(getCurrentDir())
 	return projectName
 }
