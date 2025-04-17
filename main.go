@@ -35,6 +35,9 @@ func main() {
 	switch command {
 	case "init":
 		initProject()
+		newFirstProject()
+		addTarget(getTargetName(), []string{"src/main.cc"})
+
 	case "add":
 		if len(os.Args) < 3 {
 			fmt.Println("Error: 'add' requires a target name")

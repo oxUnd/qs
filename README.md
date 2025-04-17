@@ -38,6 +38,18 @@ Glob patterns support:
 - `?` - Matches any single character
 - `[abc]` - Matches any character in the brackets
 
+### Build project
+
+```
+qs build
+```
+
+### Run project
+
+```
+qs run
+```
+
 ### Add standard CMake configuration
 
 ```
