@@ -18,10 +18,14 @@ int main() {
 		os.Mkdir("src", 0755)
 	}
 
-	err := os.WriteFile("src/main.cc", []byte(source), 0644)
-	if err != nil {
-		fmt.Printf("Error creating main.cc: %v\n", err)
-		return
+	if _, err := os.Stat("src/main.cc"); os.IsNotExist(err) {
+		err := os.WriteFile("src/main.cc", []byte(source), 0644)
+		if err != nil {
+			fmt.Printf("Error creating main.cc: %v\n", err)
+			return
+		}
+	} else {
+		fmt.Println("main.cc already exists")
 	}
 
 	fmt.Println("Initialized project with main.cc")
