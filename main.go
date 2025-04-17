@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 const version = "0.1.0"
@@ -17,6 +19,7 @@ func printHelp() {
 	fmt.Println("                            [files] can include glob patterns like *.cpp")
 	fmt.Println("  qs std [cxx_std]          Add standard CMake configuration with optional C++ standard (11/14/17/20)")
 	fmt.Println("  qs build                  Create build directory, run cmake and make")
+	fmt.Println("  qs run [target]           Run the specified executable target (or default target if not specified)")
 	fmt.Println("  qs version                Show version information")
 	fmt.Println("  qs help                   Show this help message")
 }
@@ -56,6 +59,12 @@ func main() {
 		addStandardConfig(cxxStd)
 	case "build":
 		buildProject()
+	case "run":
+		targetName := ""
+		if len(os.Args) > 2 {
+			targetName = os.Args[2]
+		}
+		runProject(targetName)
 	case "version":
 		fmt.Printf("qs version %s\n", version)
 	case "help":
@@ -121,4 +130,97 @@ func buildProject() {
 	}
 
 	fmt.Println("Build completed successfully!")
+}
+
+// runProject runs a built executable target from the build directory
+func runProject(targetName string) {
+	// Check for build directory
+	if _, err := os.Stat("build"); os.IsNotExist(err) {
+		fmt.Println("Error: build directory not found.")
+		fmt.Println("Run 'qs build' to build the project first.")
+		return
+	}
+
+	// Get current directory to construct build path
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("Error getting current directory: %s\n", err)
+		return
+	}
+
+	// Check if bin directory exists (standard layout)
+	binDir := cwd + "/build/bin"
+	executablesPath := binDir
+	if _, err := os.Stat(binDir); os.IsNotExist(err) {
+		// Fall back to just the build directory
+		executablesPath = cwd + "/build"
+	}
+
+	// If no target specified, try to find one
+	if targetName == "" {
+		// Try to find an executable in the build directory
+		files, err := os.ReadDir(executablesPath)
+		if err != nil {
+			fmt.Printf("Error reading build directory: %s\n", err)
+			return
+		}
+
+		// Look for executable files
+		var executables []string
+		for _, file := range files {
+			// Skip directories and files starting with "."
+			if file.IsDir() || strings.HasPrefix(file.Name(), ".") {
+				continue
+			}
+
+			// On Unix systems, check if file is executable
+			filePath := filepath.Join(executablesPath, file.Name())
+			fileInfo, err := os.Stat(filePath)
+			if err != nil {
+				continue
+			}
+
+			// Check if file has execute permission
+			if fileInfo.Mode()&0111 != 0 {
+				executables = append(executables, file.Name())
+			}
+		}
+
+		if len(executables) == 0 {
+			fmt.Println("Error: No executable targets found in build directory.")
+			fmt.Println("Specify a target name or build the project first with 'qs build'.")
+			return
+		} else if len(executables) == 1 {
+			targetName = executables[0]
+			fmt.Printf("Running target: %s\n", targetName)
+		} else {
+			// Multiple executables found, let user choose
+			fmt.Println("Multiple targets found:")
+			for i, exe := range executables {
+				fmt.Printf("  %d. %s\n", i+1, exe)
+			}
+			fmt.Println("Please specify a target name: qs run <target>")
+			return
+		}
+	}
+
+	// Construct path to the executable
+	targetPath := filepath.Join(executablesPath, targetName)
+	if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+		fmt.Printf("Error: Target '%s' not found in build directory.\n", targetName)
+		return
+	}
+
+	// Run the executable
+	fmt.Printf("Running %s...\n", targetName)
+	cmd := exec.Command(targetPath)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	err = cmd.Run()
+	if err != nil {
+		fmt.Printf("Error running target: %s\n", err)
+		return
+	}
 }
