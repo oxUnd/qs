@@ -56,6 +56,19 @@ qs run [target]
 
 Runs the specified executable target (or the default target if not specified).
 
+### List targets
+
+```
+qs list
+```
+
+Lists all available targets in the project, including:
+- Executable targets defined in CMakeLists.txt
+- Library targets defined in CMakeLists.txt
+- Actual built executables in the build directory
+
+This command helps you see what targets are available for building and running.
+
 ### Add standard CMake configuration
 
 ```

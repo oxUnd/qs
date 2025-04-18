@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -20,6 +21,7 @@ func printHelp() {
 	fmt.Println("  qs std [cxx_std]          Add standard CMake configuration with optional C++ standard (11/14/17/20)")
 	fmt.Println("  qs build                  Create build directory, run cmake and make")
 	fmt.Println("  qs run [target]           Run the specified executable target (or default target if not specified)")
+	fmt.Println("  qs list                   List all available targets in the project")
 	fmt.Println("  qs version                Show version information")
 	fmt.Println("  qs help                   Show this help message")
 }
@@ -65,6 +67,8 @@ func main() {
 			targetName = os.Args[2]
 		}
 		runProject(targetName)
+	case "list":
+		listTargets()
 	case "version":
 		fmt.Printf("qs version %s\n", version)
 	case "help":
@@ -72,6 +76,105 @@ func main() {
 	default:
 		fmt.Printf("Unknown command: %s\n", command)
 		printHelp()
+	}
+}
+
+// listTargets finds and lists all targets in the project
+func listTargets() {
+	// Check for CMakeLists.txt
+	if _, err := os.Stat("CMakeLists.txt"); os.IsNotExist(err) {
+		fmt.Println("Error: CMakeLists.txt not found in the current directory.")
+		fmt.Println("Run 'qs init' to create a new CMake project.")
+		return
+	}
+
+	// Read CMakeLists.txt
+	cmakelists, err := os.ReadFile("CMakeLists.txt")
+	if err != nil {
+		fmt.Printf("Error reading CMakeLists.txt: %s\n", err)
+		return
+	}
+
+	cmakeContent := string(cmakelists)
+
+	// Find executable targets
+	exeRegex := regexp.MustCompile(`add_executable\(([^):\n\s]+)`)
+	exeMatches := exeRegex.FindAllStringSubmatch(cmakeContent, -1)
+
+	// Find library targets
+	libRegex := regexp.MustCompile(`add_library\(([^):\n\s]+)`)
+	libMatches := libRegex.FindAllStringSubmatch(cmakeContent, -1)
+
+	if len(exeMatches) == 0 && len(libMatches) == 0 {
+		fmt.Println("No targets found in CMakeLists.txt.")
+		return
+	}
+
+	fmt.Println("Project targets:")
+
+	if len(exeMatches) > 0 {
+		fmt.Println("\nExecutables:")
+		for i, match := range exeMatches {
+			if len(match) > 1 {
+				fmt.Printf("  %d. %s\n", i+1, match[1])
+			}
+		}
+	}
+
+	if len(libMatches) > 0 {
+		fmt.Println("\nLibraries:")
+		for i, match := range libMatches {
+			if len(match) > 1 {
+				fmt.Printf("  %d. %s\n", i+1, match[1])
+			}
+		}
+	}
+
+	// Also check if the project has been built and look for actual executables
+	if _, err := os.Stat("build"); !os.IsNotExist(err) {
+		// Get current directory to construct build path
+		cwd, err := os.Getwd()
+		if err == nil {
+			// Check if bin directory exists (standard layout)
+			binDir := cwd + "/build/bin"
+			executablesPath := binDir
+			if _, err := os.Stat(binDir); os.IsNotExist(err) {
+				// Fall back to just the build directory
+				executablesPath = cwd + "/build"
+			}
+
+			// Try to find executables in the build directory
+			files, err := os.ReadDir(executablesPath)
+			if err == nil {
+				// Look for executable files
+				var executables []string
+				for _, file := range files {
+					// Skip directories and files starting with "."
+					if file.IsDir() || strings.HasPrefix(file.Name(), ".") {
+						continue
+					}
+
+					// Check if file is executable
+					filePath := filepath.Join(executablesPath, file.Name())
+					fileInfo, err := os.Stat(filePath)
+					if err != nil {
+						continue
+					}
+
+					// Check if file has execute permission
+					if fileInfo.Mode()&0111 != 0 {
+						executables = append(executables, file.Name())
+					}
+				}
+
+				if len(executables) > 0 {
+					fmt.Println("\nBuilt executables:")
+					for i, exe := range executables {
+						fmt.Printf("  %d. %s\n", i+1, exe)
+					}
+				}
+			}
+		}
 	}
 }
 
