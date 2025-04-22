@@ -17,6 +17,7 @@ func printHelp() {
 	fmt.Println("qs - Quick Setup for CMake projects")
 	fmt.Println("Usage:")
 	fmt.Println("  qs init                   Initialize a new CMake project")
+	fmt.Println("  qs init sub <name>        Create a subdirectory with CMakeLists.txt for a sub-project")
 	fmt.Println("  qs add <target> [files]   Add executable or library target")
 	fmt.Println("                            [files] can include glob patterns like *.cpp")
 	fmt.Println("  qs std [cxx_std]          Add standard CMake configuration with optional C++ standard (11/14/17/20)")
@@ -38,7 +39,16 @@ func main() {
 
 	switch command {
 	case "init":
-		initProject()
+		if len(os.Args) > 2 && os.Args[2] == "sub" {
+			if len(os.Args) < 4 {
+				fmt.Println("Error: 'init sub' requires a subdirectory name")
+				return
+			}
+			subDirName := os.Args[3]
+			initSubProject(subDirName)
+		} else {
+			initProject()
+		}
 	case "add":
 		if len(os.Args) < 3 {
 			fmt.Println("Error: 'add' requires a target name")

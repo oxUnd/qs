@@ -57,6 +57,173 @@ enable_testing()
 	addTarget(getProjectName(), []string{"src/main.cc"})
 }
 
+// initSubProject creates a subdirectory with a CMakeLists.txt file for a sub-project
+func initSubProject(subDirName string) {
+	// Validate subdirectory name
+	if strings.TrimSpace(subDirName) == "" {
+		fmt.Println("Error: Please specify a valid subdirectory name.")
+		return
+	}
+
+	// Check if parent CMakeLists.txt exists
+	if !fileExists("CMakeLists.txt") {
+		fmt.Println("Error: Main CMakeLists.txt not found in the current directory.")
+		fmt.Println("Run 'qs init' in the parent directory before creating a sub-project.")
+		return
+	}
+
+	// Create the subdirectory if it doesn't exist
+	if _, err := os.Stat(subDirName); os.IsNotExist(err) {
+		err := os.MkdirAll(subDirName, 0755)
+		if err != nil {
+			fmt.Printf("Error creating subdirectory '%s': %v\n", subDirName, err)
+			return
+		}
+		fmt.Printf("Created subdirectory '%s'\n", subDirName)
+	}
+
+	// Create the CMakeLists.txt for the subdirectory
+	subCMakeContent := fmt.Sprintf(`# %s sub-project
+
+# Add include directories
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# Add source files
+file(GLOB SOURCES "*.cpp" "*.cc" "*.c" "src/*.cpp" "src/*.cc" "src/*.c")
+file(GLOB HEADERS "*.h" "*.hpp" "include/*.h" "include/*.hpp")
+
+# Add library
+add_library(%s ${SOURCES} ${HEADERS})
+
+# Link any dependencies if needed
+# target_link_libraries(%s PRIVATE dependency1 dependency2)
+
+# Set include directories for targets that link this library
+target_include_directories(%s PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+# Install rules
+install(TARGETS %s
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+install(DIRECTORY include/ DESTINATION include)
+`, subDirName, subDirName, subDirName, subDirName, subDirName)
+
+	subCMakePath := filepath.Join(subDirName, "CMakeLists.txt")
+	err := os.WriteFile(subCMakePath, []byte(subCMakeContent), 0644)
+	if err != nil {
+		fmt.Printf("Error creating CMakeLists.txt in '%s': %v\n", subDirName, err)
+		return
+	}
+
+	// Create include directory in the subdirectory
+	includeDir := filepath.Join(subDirName, "include")
+	if _, err := os.Stat(includeDir); os.IsNotExist(err) {
+		err := os.MkdirAll(includeDir, 0755)
+		if err != nil {
+			fmt.Printf("Error creating include directory: %v\n", err)
+		}
+	}
+
+	// Create src directory in the subdirectory
+	srcDir := filepath.Join(subDirName, "src")
+	if _, err := os.Stat(srcDir); os.IsNotExist(err) {
+		err := os.MkdirAll(srcDir, 0755)
+		if err != nil {
+			fmt.Printf("Error creating src directory: %v\n", err)
+		}
+	}
+
+	// Update parent CMakeLists.txt to include the subdirectory
+	parentCMake, err := os.ReadFile("CMakeLists.txt")
+	if err != nil {
+		fmt.Printf("Error reading parent CMakeLists.txt: %v\n", err)
+		return
+	}
+
+	parentCMakeContent := string(parentCMake)
+
+	// Check if the subdirectory is already included
+	addSubdirLine := fmt.Sprintf("add_subdirectory(%s)", subDirName)
+	if strings.Contains(parentCMakeContent, addSubdirLine) {
+		fmt.Printf("Subdirectory '%s' is already included in the parent CMakeLists.txt\n", subDirName)
+	} else {
+		// Add the subdirectory to the parent CMakeLists.txt
+		parentCMakeContent += fmt.Sprintf("\n# Include the %s sub-project\nadd_subdirectory(%s)\n", subDirName, subDirName)
+
+		err = os.WriteFile("CMakeLists.txt", []byte(parentCMakeContent), 0644)
+		if err != nil {
+			fmt.Printf("Error updating parent CMakeLists.txt: %v\n", err)
+			return
+		}
+		fmt.Printf("Added subdirectory '%s' to parent CMakeLists.txt\n", subDirName)
+	}
+
+	linkSubLibLine := fmt.Sprintf("target_link_libraries(%s PRIVATE %s)", getProjectName(), subDirName)
+	if strings.Contains(parentCMakeContent, linkSubLibLine) {
+		fmt.Printf("Subdirectory '%s' is already linked in the parent CMakeLists.txt\n", subDirName)
+	} else {
+		parentCMakeContent += fmt.Sprintf("\n# Link the %s sub-project\ntarget_link_libraries(%s PRIVATE %s)\n", subDirName, getProjectName(), subDirName)
+
+		err = os.WriteFile("CMakeLists.txt", []byte(parentCMakeContent), 0644)
+		if err != nil {
+			fmt.Printf("Error updating parent CMakeLists.txt: %v\n", err)
+			return
+		}
+		fmt.Printf("Added subdirectory '%s' to parent CMakeLists.txt\n", subDirName)
+	}
+
+	// Create a sample header file
+	headerContent := fmt.Sprintf(`#pragma once
+
+namespace %s {
+
+class Example {
+public:
+    Example();
+    void doSomething();
+};
+
+} // namespace %s
+`, subDirName, subDirName)
+
+	headerPath := filepath.Join(includeDir, subDirName+".h")
+	err = os.WriteFile(headerPath, []byte(headerContent), 0644)
+	if err != nil {
+		fmt.Printf("Error creating sample header: %v\n", err)
+	}
+
+	// Create a sample source file
+	sourceContent := fmt.Sprintf(`#include "%s.h"
+#include <iostream>
+
+namespace %s {
+
+Example::Example() {
+    // Constructor implementation
+}
+
+void Example::doSomething() {
+    std::cout << "Hello from %s library!" << std::endl;
+}
+
+} // namespace %s
+`, subDirName, subDirName, subDirName, subDirName)
+
+	sourcePath := filepath.Join(srcDir, subDirName+".cc")
+	err = os.WriteFile(sourcePath, []byte(sourceContent), 0644)
+	if err != nil {
+		fmt.Printf("Error creating sample source: %v\n", err)
+	}
+
+	fmt.Printf("Successfully initialized sub-project '%s'.\n", subDirName)
+	fmt.Printf("To link this library to an executable, use: target_link_libraries(your_executable PRIVATE %s)\n", subDirName)
+}
+
 // getProjectName returns the project name for the project
 func getProjectName() string {
 	projectName := filepath.Base(getCurrentDir())
