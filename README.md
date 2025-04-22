@@ -20,6 +20,8 @@ qs init
 
 This creates a basic CMakeLists.txt file in the current directory.
 
+Note: For safety reasons, this command cannot be run in your home directory. Create a specific directory for your project first.
+
 ### Add an executable target
 
 ```
@@ -104,12 +106,6 @@ Create a basic hello world project:
 mkdir hello-project
 cd hello-project
 qs init
-echo '#include <iostream>
-int main() {
-    std::cout << "Hello, world!" << std::endl;
-    return 0;
-}' > hello.cpp
-qs add hello
 qs build
 qs run
 ```

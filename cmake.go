@@ -10,6 +10,14 @@ import (
 
 // initProject creates a basic CMakeLists.txt file for a new project
 func initProject() {
+	// Check if current directory is user's home directory
+	homeDir, err := os.UserHomeDir()
+	if err == nil && getCurrentDir() == homeDir {
+		fmt.Println("Error: Cannot initialize a CMake project in your home directory.")
+		fmt.Println("Please create a new directory for your project and run 'qs init' there.")
+		return
+	}
+
 	// if CMakeLists.txt exists, return
 	if fileExists("CMakeLists.txt") {
 		fmt.Println("Error: CMakeLists.txt already exists. Run 'qs add' to add targets.")
@@ -38,7 +46,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 enable_testing()
 `, projectName)
 
-	err := os.WriteFile("CMakeLists.txt", []byte(content), 0644)
+	err = os.WriteFile("CMakeLists.txt", []byte(content), 0644)
 	if err != nil {
 		fmt.Printf("Error creating CMakeLists.txt: %v\n", err)
 		return
