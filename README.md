@@ -91,6 +91,7 @@ You can optionally specify the C++ standard:
 ### Other commands
 
 ```
+qs doc          - Open CMake documentation in the default browser
 qs version      - Display version information
 qs help         - Show help message
 ```

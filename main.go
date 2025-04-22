@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -22,6 +23,7 @@ func printHelp() {
 	fmt.Println("  qs build                  Create build directory, run cmake and make")
 	fmt.Println("  qs run [target]           Run the specified executable target (or default target if not specified)")
 	fmt.Println("  qs list                   List all available targets in the project")
+	fmt.Println("  qs doc                    Open CMake documentation in the default browser")
 	fmt.Println("  qs version                Show version information")
 	fmt.Println("  qs help                   Show this help message")
 }
@@ -69,6 +71,8 @@ func main() {
 		runProject(targetName)
 	case "list":
 		listTargets()
+	case "doc":
+		openDocumentation()
 	case "version":
 		fmt.Printf("qs version %s\n", version)
 	case "help":
@@ -325,5 +329,28 @@ func runProject(targetName string) {
 	if err != nil {
 		fmt.Printf("Error running target: %s\n", err)
 		return
+	}
+}
+
+// openDocumentation opens the CMake documentation in the default browser
+func openDocumentation() {
+	cmakeDocURL := "https://cmake.org/cmake/help/latest/index.html"
+	fmt.Printf("Opening CMake documentation: %s\n", cmakeDocURL)
+
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", cmakeDocURL)
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", cmakeDocURL)
+	default: // Linux and others
+		cmd = exec.Command("xdg-open", cmakeDocURL)
+	}
+
+	err := cmd.Run()
+	if err != nil {
+		fmt.Printf("Error opening documentation: %s\n", err)
+		fmt.Printf("Please open the following URL manually: %s\n", cmakeDocURL)
 	}
 }
