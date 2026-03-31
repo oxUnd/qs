@@ -432,23 +432,7 @@ func addStandardConfig(cxxStd int) {
 
 	// Add standard configurations if not already present
 	if !stdConfigAdded {
-		// First, try to find target names for install command
-		re := regexp.MustCompile(`add_executable\(([^):\n\s]+)`)
-		matches := re.FindAllStringSubmatch(cmakeContent, -1)
-
-		targetNames := []string{}
-		for _, match := range matches {
-			if len(match) > 1 {
-				targetNames = append(targetNames, match[1])
-			}
-		}
-
-		installCmd := "# Add install target\n"
-		if len(targetNames) > 0 {
-			installCmd += fmt.Sprintf("install(TARGETS %s DESTINATION bin)\n", strings.Join(targetNames, " "))
-		} else {
-			installCmd += "# No targets found to install\n"
-		}
+		installCmd := buildInstallBlock(cmakeContent)
 
 		stdConfig := fmt.Sprintf(`
 
@@ -460,6 +444,8 @@ func addStandardConfig(cxxStd int) {
 		// Standard config already exists
 		fmt.Println("Standard CMake configuration already present")
 	}
+
+	cmakeContent = updateInstallBlock(cmakeContent)
 
 	err = os.WriteFile("CMakeLists.txt", []byte(cmakeContent), 0644)
 	if err != nil {
@@ -537,4 +523,44 @@ func removeDuplicates(files []string) []string {
 	}
 
 	return result
+}
+
+func findExecutableTargets(cmakeContent string) []string {
+	re := regexp.MustCompile(`add_executable\(([^\s\)]+)`)
+	matches := re.FindAllStringSubmatch(cmakeContent, -1)
+
+	targetNames := []string{}
+	for _, match := range matches {
+		if len(match) > 1 {
+			targetNames = append(targetNames, match[1])
+		}
+	}
+
+	return removeDuplicates(targetNames)
+}
+
+func buildInstallBlock(cmakeContent string) string {
+	targetNames := findExecutableTargets(cmakeContent)
+
+	installCmd := "# Add install target\n"
+	if len(targetNames) > 0 {
+		installCmd += fmt.Sprintf("install(TARGETS %s DESTINATION bin)\n", strings.Join(targetNames, " "))
+	} else {
+		installCmd += "# No executable targets found to install yet\n"
+	}
+
+	return installCmd
+}
+
+func updateInstallBlock(cmakeContent string) string {
+	installBlock := buildInstallBlock(cmakeContent)
+	installBlockRegex := regexp.MustCompile(`(?m)# Add install target\n(?:install\(TARGETS [^\n]* DESTINATION bin\)\n|# No executable targets found to install yet\n|# No targets found to install\n)?`)
+
+	if installBlockRegex.MatchString(cmakeContent) {
+		cmakeContent = installBlockRegex.ReplaceAllString(cmakeContent, "")
+		cmakeContent = strings.TrimRight(cmakeContent, "\n") + "\n\n" + installBlock
+		return cmakeContent
+	}
+
+	return cmakeContent
 }
